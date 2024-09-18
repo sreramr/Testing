@@ -7,11 +7,11 @@
     - name: Define a list of new hosts with their groups and credentials
       set_fact:
         new_hosts:
-          - hostname: 10.2.144.26
+          - hostname: 10.255.154.216
             group: servers
-            ansible_user: svcans01
-            ansible_ssh_pass: Welcome@123
-            ansible_become_pass: Welcome@123
+            ansible_user: admin01
+            ansible_ssh_pass: admin@123
+            ansible_become_pass: admin@123
 
     - name: Add new hosts to inventory
       add_host:
