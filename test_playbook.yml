@@ -1,5 +1,5 @@
 ---
-# First play: Inventory Setup
+# Step 1: Inventory Setup on localhost
 - name: SLES Linux OS Patching - Inventory Setup
   hosts: localhost
   gather_facts: no
@@ -7,11 +7,11 @@
     - name: Define a list of new hosts with their groups and credentials
       set_fact:
         new_hosts:
-          - hostname: 10.256.114.76
+          - hostname: 10.2.144.26
             group: servers
-            ansible_user: cans0201
-            ansible_ssh_pass: admin@123
-            ansible_become_pass: admin@123
+            ansible_user: svcans01
+            ansible_ssh_pass: Welcome@123
+            ansible_become_pass: Welcome@123
 
     - name: Add new hosts to inventory
       add_host:
@@ -27,25 +27,33 @@
         msg: "Added host: {{ item.hostname }} to group: {{ item.group }}"
       loop: "{{ new_hosts }}"
 
-# Second play: Pre-checks and Update Tasks on Servers
-- name: Run Pre-checks and Update Tasks on Servers
+# Step 2: Run Patching Tasks on Added Hosts
+- name: Run commands on multiple servers with sudo privileges
   hosts: servers
-  gather_facts: yes
-  tasks:
-    - name: Check for all available updates
-      command: zypper refresh && zypper list-updates
-      register: update_list
-      failed_when: update_list.rc != 0
+  gather_facts: no
+  become: yes
+  become_method: sudo
 
-    - name: Display raw update list
+  tasks:
+    - name: Check for available updates on remote servers using zypper
+      command: yum repolist all
+      register: update_list
+      become: yes  # Run with sudo on the target servers
+      delegate_to: localhost
+
+    - name: Display raw update list from remote servers
       debug:
         msg: "{{ update_list.stdout }}"
+      delegate_to: localhost
 
-    - name: Filter kernel updates from the update list
-      shell: echo "{{ update_list.stdout }}" | grep -i kernel || echo "No kernel updates found."
-      register: kernel_updates
-      failed_when: false
-
-    - name: Display kernel update status
+    - name: Check if no updates were found
       debug:
-        msg: "{{ kernel_updates.stdout }}"
+        msg: "No updates available"
+      when: "'No updates found' in update_list.stdout"
+      delegate_to: localhost
+
+    - name: Display available updates
+      debug:
+        msg: "Updates available: {{ update_list.stdout }}"
+      when: "'No updates found' not in update_list.stdout"
+      delegate_to: localhost
