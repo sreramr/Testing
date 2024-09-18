@@ -1,0 +1,51 @@
+---
+# First play: Inventory Setup
+- name: SLES Linux OS Patching - Inventory Setup
+  hosts: localhost
+  gather_facts: no
+  tasks:
+    - name: Define a list of new hosts with their groups and credentials
+      set_fact:
+        new_hosts:
+          - hostname: 10.2.144.26
+            group: servers
+            ansible_user: cans0201
+            ansible_ssh_pass: admin@123
+            ansible_become_pass: admin@123
+
+    - name: Add new hosts to inventory
+      add_host:
+        name: "{{ item.hostname }}"
+        groups: "{{ item.group }}"
+        ansible_user: "{{ item.ansible_user }}"
+        ansible_ssh_pass: "{{ item.ansible_ssh_pass }}"
+        ansible_become_pass: "{{ item.ansible_become_pass }}"
+      loop: "{{ new_hosts }}"
+
+    - name: Display the new hosts added to the inventory
+      debug:
+        msg: "Added host: {{ item.hostname }} to group: {{ item.group }}"
+      loop: "{{ new_hosts }}"
+
+# Second play: Pre-checks and Update Tasks on Servers
+- name: Run Pre-checks and Update Tasks on Servers
+  hosts: servers
+  gather_facts: yes
+  tasks:
+    - name: Check for all available updates
+      command: zypper refresh && zypper list-updates
+      register: update_list
+      failed_when: update_list.rc != 0
+
+    - name: Display raw update list
+      debug:
+        msg: "{{ update_list.stdout }}"
+
+    - name: Filter kernel updates from the update list
+      shell: echo "{{ update_list.stdout }}" | grep -i kernel || echo "No kernel updates found."
+      register: kernel_updates
+      failed_when: false
+
+    - name: Display kernel update status
+      debug:
+        msg: "{{ kernel_updates.stdout }}"
